@@ -54,8 +54,10 @@ create table if not exists public.materials (
   name text not null,
   required boolean not null default true,
   status text not null check (status in ('missing','pending','archived')) default 'missing',
+  source_type text not null default 'link' check (source_type in ('link','file','text')),
   material_link text default '',
   storage_path text default '',
+  content_text text default '',
   note text default '',
   uploaded_by text default '',
   created_by uuid references auth.users(id),
@@ -64,6 +66,18 @@ create table if not exists public.materials (
   updated_at timestamptz not null default now(),
   constraint materials_unique unique(project_name, stage, event_label, material_type)
 );
+
+alter table public.materials add column if not exists source_type text not null default 'link';
+alter table public.materials add column if not exists content_text text default '';
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'materials_source_type_check'
+  ) then
+    alter table public.materials
+      add constraint materials_source_type_check check (source_type in ('link','file','text'));
+  end if;
+end $$;
 
 create table if not exists public.fte_entries (
   id uuid primary key default gen_random_uuid(),
